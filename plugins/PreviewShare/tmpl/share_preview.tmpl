@@ -1,5 +1,47 @@
 <mt:setvar name="page_title" value="Share Preview">
-<mt:include name="header.tmpl">
 
-<mt:include name="footer.tmpl">
+<mt:setvarblock name="form_header">
+<form name="preview_share_form" id="preview_share_form" method="post" action="<$mt:var name="script_url">" mt:once="1">
+    <input type="hidden" name="entry_id" value="<mt:var name="entry_id">" />
+    <input type="hidden" name="return_to" value="<mt:var name="redirect">" />
+</mt:setvarblock>
+
+<mt:setvarblock name="form_footer">
+</form>
+</mt:setvarblock>
+
+<mt:setvarblock name="action_buttons">
+  <button
+     mt:mode="do_share_preview"
+     type="submit"
+     title="Share Preview"
+     class="primary-button">Share Preview</button>
+</mt:setvarblock>
+
+<mt:include name="include/header.tmpl">
+
+<mtapp:setting
+   id="share_url"
+   label="Preview URL">
+  <p><mt:var name="preview_url"></p>
+</mtapp:setting>
+
+<mtapp:setting
+   id="share_to"
+   label="Share Preview With">
+  <input type="text" class="full-width" name="share_to" id="share_to" />
+</mtapp:setting>
+
+<mtapp:setting
+   id="share_message"
+   label="Message">
+  <textarea name="share_message" id="share_message" cols="" rows="" class="full-width short"></textarea>
+</mtapp:setting>
+
+<div class="actions-bar pkg">
+<button mt:mode="do_preview_share" type="submit" class="primary-button">Share Preview (2)</button>
+</div>
+<mt:include name="include/actions_bar.tmpl" bar_position="bottom" hide_pager="1">
+
+<mt:include name="include/footer.tmpl">
 

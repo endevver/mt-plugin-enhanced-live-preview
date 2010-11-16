@@ -7,7 +7,7 @@ use warnings;
 use File::Spec;
 
 sub preview_share {
-    my ( $app, $fwd_params ) = @_;
+    my ( $app, @fwd_params ) = @_;
 
     # we need to:
     # * save the entry
@@ -27,7 +27,7 @@ sub preview_share {
     # and forward back to this mode?
 
     # if no foward params, we're just starting
-    if ( !$fwd_params ) {
+    if ( !@fwd_params ) {
 
         # so grab the preview file
         require MT::Session;
@@ -37,7 +37,8 @@ sub preview_share {
         my $file    = $tf->name;
 
         # copy that sucker!
-        my $base_share_dir = $app->config->PreviewShareDirectory;
+        my $base_share_dir = $app->config->PreviewShareDirectory
+            || File::Spec->catdir( $app->static_file_path, "previews" );
         my $ext = $app->blog->file_extension || '';
         $ext = '.' . $ext if $ext ne '';
         my $preview_share_file
@@ -48,7 +49,8 @@ sub preview_share {
 
         # build the url for the preview
 
-        my $base_share_url = $app->config->PreviewShareUrl;
+        my $base_share_url = $app->config->PreviewShareUrl
+            || $app->static_path . "previews";
         $base_share_url .= '/' unless $base_share_url =~ /\/$/;
         $base_share_url .= $preview . $ext;
 
@@ -59,6 +61,14 @@ sub preview_share {
         return $app->forward('save_entry');
     }
     else {
+
+        # should this be a redirect instead of a POST response
+        # on the off chance somebody hits refresh and it gets into
+        # a funky state?
+
+        # I'm leaning towards yes.  Since I've done just that.
+
+        my $entry = shift @fwd_params;
 
         # we've been forwarded here
         # so it's time to build the template to pass to the user
@@ -73,13 +83,36 @@ sub preview_share {
         my %params;
         $params{preview_file} = $file;
         $params{preview_url}  = $url;
-        return $app->load_tmpl( 'share_preview.tmpl', \%params );
+        $params{entry_id}     = $entry->id;
+
+        $app->session( 'preview_entry_id', $entry->id );
+        $app->session( 'preview_file',     $file );
+        $app->session( 'preview_url',      $url );
+        $app->session( 'preview_redirect', $redirect );
+
+        return $app->redirect(
+            $app->uri(
+                mode => 'start_preview_share',
+                args => { blog_id => $app->blog->id }
+            )
+        );
+
+        return $app->load_tmpl( 'share_preview.tmpl', \%params )
+            or die $app->errstr;
 
     }
+}
 
-    use Data::Dumper;
-    my %p = $app->param_hash;
-    die Dumper( \%p );
+sub start_preview_share {
+    my $app = shift;
+
+    my %params;
+    $params{entry_id}     = $app->session('preview_entry_id');
+    $params{preview_file} = $app->session('preview_file');
+    $params{preview_url}  = $app->session('preview_url');
+    $params{redirect}     = $app->session('preview_redirect');
+
+    return $app->load_tmpl( 'share_preview.tmpl', \%params );
 }
 
 sub source_preview_strip {
@@ -106,9 +139,29 @@ sub post_save_entry {
         # after being forwarded to save_entry
         # we should re-forward to the sharing code
         $app->forward( 'preview_share', $entry );
+
     }
 
     return 1;
+}
+
+sub do_preview_share {
+    my $app = shift;
+
+    my %params;
+    $params{entry_id}     = $app->session('preview_entry_id');
+    $params{preview_file} = $app->session('preview_file');
+    $params{preview_url}  = $app->session('preview_url');
+    $params{redirect}     = $app->session('preview_redirect');
+
+    # clear out the session, since we're actually sharing the preview now
+    $app->session( 'preview_entry_id', '' );
+    $app->session( 'preview_file',     '' );
+    $app->session( 'preview_url',      '' );
+    $app->session( 'preview_redirect', '' );
+
+    use Data::Dumper;
+    die Dumper( \%params );
 }
 
 1;

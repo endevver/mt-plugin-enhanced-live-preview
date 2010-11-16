@@ -6,6 +6,8 @@ applications:
   cms:
     methods:
       preview_share: $PreviewShare::PreviewShare::CMS::preview_share
+      start_preview_share: $PreviewShare::PreviewShare::CMS::start_preview_share
+      do_preview_share: $PreviewShare::PreviewShare::CMS::do_preview_share
     callbacks:
       template_source.preview_strip: $PreviewShare::PreviewShare::CMS::source_preview_strip
       cms_post_save.entry: $PreviewShare::PreviewShare::CMS::post_save_entry
