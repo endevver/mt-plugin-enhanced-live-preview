@@ -1,0 +1,11 @@
+name: Preview Share
+description: Share entry previews
+version: 0.1
+
+applications:
+  cms:
+    methods:
+      preview_share: $PreviewShare::PreviewShare::CMS::preview_share
+    callbacks:
+      template_source.preview_strip: $PreviewShare::PreviewShare::CMS::source_preview_strip
+      cms_post_save.entry: $PreviewShare::PreviewShare::CMS::post_save_entry
