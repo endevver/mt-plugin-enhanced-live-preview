@@ -55,6 +55,7 @@ sub preview_share {
         $base_share_url .= $preview . $ext;
 
         # stash it
+        $app->request( 'preview_file',      $file );
         $app->request( 'preview_share_url', $base_share_url );
 
         # forward to the save
@@ -148,11 +149,22 @@ sub post_save_entry {
 sub do_preview_share {
     my $app = shift;
 
+    # get the recipient list
+    my $share_to = $app->param('share_to');
+    my @recipients = split( /\s*,\s*/, $share_to );
+
+    # and the sharing message
+    my $share_message = $app->param('share_message');
+
+    # need some error condition checking here
+    # what if they're not sharing with anybody?
+
     my %params;
-    $params{entry_id}     = $app->session('preview_entry_id');
+    my $entry_id    = $app->session('preview_entry_id');
+    my $preview_url = $app->session('preview_url');
+    my $redirect    = $app->session('preview_redirect');
+
     $params{preview_file} = $app->session('preview_file');
-    $params{preview_url}  = $app->session('preview_url');
-    $params{redirect}     = $app->session('preview_redirect');
 
     # clear out the session, since we're actually sharing the preview now
     $app->session( 'preview_entry_id', '' );
@@ -160,8 +172,31 @@ sub do_preview_share {
     $app->session( 'preview_url',      '' );
     $app->session( 'preview_redirect', '' );
 
-    use Data::Dumper;
-    die Dumper( \%params );
+    # let's build the email
+
+    # - first, load the entry, so we can build he subject
+    require MT::Entry;
+    my $e = MT::Entry->load($entry_id);
+
+    my $subject
+        = 'Shared preview of "' . $e->title . '" on ' . $entry->blog->name;
+
+    my %head = ( To => \@recipients, Subject => $subject );
+    my $body = <<"EMAIL";
+View the preview: $preview_url
+EMAIL
+
+    $body .= "\n\n$share_message\n" if $share_message;
+
+    # send the preview notification email
+
+    require MT::Mail;
+    MT::Mail->send( \%head, $body ) or die MT::Mail->errstr;
+
+    # the redirect the user to the original page that they *would* have
+    # been sent to
+
+    return $app->redirect($redirect);
 }
 
 1;
