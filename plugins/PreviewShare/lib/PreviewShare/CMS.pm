@@ -19,8 +19,9 @@ sub preview_share {
     #   - message
     #   - preview link (for copy+pasting)
 
-   # preview is removed iff _preview_file parameter exists
-   # but we need to keep it in there to clean up the preview from the archives
+    # preview is removed iff _preview_file parameter exists
+    # but we need to keep it in there to clean up the preview
+    # from the archives
 
     # best for saving the entry:
     # forward to save_entry and catch the situation in a callback
@@ -81,11 +82,6 @@ sub preview_share {
         my $file = $app->request('preview_file');
         my $url  = $app->request('preview_share_url');
 
-        my %params;
-        $params{preview_file} = $file;
-        $params{preview_url}  = $url;
-        $params{entry_id}     = $entry->id;
-
         $app->session( 'preview_entry_id', $entry->id );
         $app->session( 'preview_file',     $file );
         $app->session( 'preview_url',      $url );
@@ -97,10 +93,6 @@ sub preview_share {
                 args => { blog_id => $app->blog->id }
             )
         );
-
-        return $app->load_tmpl( 'share_preview.tmpl', \%params )
-            or die $app->errstr;
-
     }
 }
 
