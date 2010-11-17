@@ -1,4 +1,5 @@
 <mt:setvar name="page_title" value="Share Preview">
+<$mt:setvar name="position_actions_bottom" value="1"$>
 
 <mt:setvarblock name="form_header">
 <form name="preview_share_form" id="preview_share_form" method="post" action="<$mt:var name="script_url">" mt:once="1">
@@ -8,14 +9,6 @@
 
 <mt:setvarblock name="form_footer">
 </form>
-</mt:setvarblock>
-
-<mt:setvarblock name="action_buttons">
-  <button
-     mt:mode="do_share_preview"
-     type="submit"
-     title="Share Preview"
-     class="primary-button">Share Preview</button>
 </mt:setvarblock>
 
 <mt:include name="include/header.tmpl">
@@ -38,10 +31,14 @@
   <textarea name="share_message" id="share_message" cols="" rows="" class="full-width short"></textarea>
 </mtapp:setting>
 
-<div class="actions-bar pkg">
-<button mt:mode="do_preview_share" type="submit" class="primary-button">Share Preview (2)</button>
-</div>
-<mt:include name="include/actions_bar.tmpl" bar_position="bottom" hide_pager="1">
+<mt:setvarblock name="action_buttons">
+  <button
+     mt:mode="do_share_preview"
+     type="submit"
+     title="Share Preview"
+     class="primary-button">Share Preview</button>
+</mt:setvarblock>
+<mt:include name="include/actions_bar.tmpl" bar_position="bottom" hide_pager="1" settings_bar="1">
 
 <mt:include name="include/footer.tmpl">
 
