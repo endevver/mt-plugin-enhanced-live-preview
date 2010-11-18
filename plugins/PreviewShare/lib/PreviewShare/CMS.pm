@@ -171,7 +171,7 @@ sub do_preview_share {
     my $e = MT::Entry->load($entry_id);
 
     my $subject
-        = 'Shared preview of "' . $e->title . '" on ' . $entry->blog->name;
+        = 'Shared preview of "' . $e->title . '" on ' . $e->blog->name;
 
     my %head = ( To => \@recipients, Subject => $subject );
     my $body = <<"EMAIL";
