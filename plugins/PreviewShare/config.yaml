@@ -1,6 +1,6 @@
 name: Preview Share
 description: Share entry previews
-version: 0.1
+version: 0.2
 
 applications:
   cms:
