@@ -39,19 +39,27 @@ sub preview_share {
 
         # copy that sucker!
         my $base_share_dir = $app->config->PreviewShareDirectory
-            || File::Spec->catdir( $app->static_file_path, "previews" );
+            || File::Spec->catdir( $app->static_file_path, "support",
+            "previews" );
+
+        # make sure the directory exists
+        # before copying a file over
+        my $fmgr = $app->blog->file_mgr;
+        $fmgr->mkpath($base_share_dir) if !-d $base_share_dir;
+
         my $ext = $app->blog->file_extension || '';
         $ext = '.' . $ext if $ext ne '';
         my $preview_share_file
             = File::Spec->catfile( $base_share_dir, $preview . $ext );
 
-        my $fmgr = $app->blog->file_mgr;
-        $fmgr->put( $file, $preview_share_file );
+        $fmgr->put( $file, $preview_share_file )
+            or return $app->error(
+            "Error writing preview file: " . $fmgr->errstr );
 
         # build the url for the preview
 
         my $base_share_url = $app->config->PreviewShareUrl
-            || $app->static_path . "previews";
+            || $app->static_path . "support/previews/";
         $base_share_url .= '/' unless $base_share_url =~ /\/$/;
         $base_share_url .= $preview . $ext;
 
@@ -78,6 +86,17 @@ sub preview_share {
         # nix the redirect from the save
         # since MT defers to that over a defined response page
         my $redirect = delete $app->{redirect};
+
+        if ( $app->config->PreviewShareSkipPublish ) {
+            $redirect = $app->uri(
+                mode => 'view',
+                args => {
+                    id      => $entry->id,
+                    blog_id => $entry->blog_id,
+                    saved   => 1
+                }
+            );
+        }
 
         my $file = $app->request('preview_file');
         my $url  = $app->request('preview_share_url');
@@ -170,6 +189,8 @@ sub do_preview_share {
     require MT::Entry;
     my $e = MT::Entry->load($entry_id);
 
+    # TODO: Make the subject and body more configurable
+
     my $subject
         = 'Shared preview of "' . $e->title . '" on ' . $e->blog->name;
 
@@ -184,6 +205,19 @@ EMAIL
 
     require MT::Mail;
     MT::Mail->send( \%head, $body ) or die MT::Mail->errstr;
+
+    if ( $app->config->PreviewShareLogPreviews ) {
+        $app->log(
+            {   message => $app->user->username
+                    . 'shared preview of entry #'
+                    . $e->id . ' ('
+                    . $e->title
+                    . ') with '
+                    . $share_to,
+                class => 'preview-share',
+            }
+        );
+    }
 
     # the redirect the user to the original page that they *would* have
     # been sent to

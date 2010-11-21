@@ -1,6 +1,16 @@
 name: Preview Share
-description: Share entry previews
+description: Add a 'Share Preview' button to the entry preview page, which allows users to store a copy of the preview and share it with others via email.
 version: 0.2
+
+config_settings:
+  PreviewShareDirectory:
+    default: ''
+  PreviewShareUrl:
+    default: ''
+  PreviewShareLogPreviews:
+    default: 1
+  PreviewShareSkipPublish:
+    default: 1
 
 applications:
   cms:
