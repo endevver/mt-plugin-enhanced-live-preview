@@ -91,9 +91,10 @@ sub preview_share {
             $redirect = $app->uri(
                 mode => 'view',
                 args => {
-                    id      => $entry->id,
-                    blog_id => $entry->blog_id,
-                    saved   => 1
+                    id            => $entry->id,
+                    blog_id       => $entry->blog_id,
+                    _type         => 'entry',
+                    saved_changes => 1
                 }
             );
         }
@@ -208,7 +209,7 @@ EMAIL
 
     if ( $app->config->PreviewShareLogPreviews ) {
         $app->log(
-            {   message => $app->user->username
+            {   message => $app->user->name
                     . 'shared preview of entry #'
                     . $e->id . ' ('
                     . $e->title
