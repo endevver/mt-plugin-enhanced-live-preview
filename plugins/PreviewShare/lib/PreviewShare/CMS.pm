@@ -58,10 +58,16 @@ sub preview_share {
 
         # build the url for the preview
 
-        my $base_share_url = $app->config->PreviewShareUrl
-            || $app->static_path . "support/previews/";
+        my $base_share_url = $app->config->PreviewShareUrl ||
+            $app->static_path . "support/previews/"; 
         $base_share_url .= '/' unless $base_share_url =~ /\/$/;
         $base_share_url .= $preview . $ext;
+
+	if ($base_share_url =~ m!^/!) {
+	    # relative path, prepend blog domain
+	    my ($blog_domain) = $app->blog->archive_url =~ m|(.+://[^/]+)|;
+	    $base_share_url = $blog_domain . $base_share_url;
+	}
 
         # stash it
         $app->request( 'preview_file',      $file );
@@ -187,13 +193,12 @@ sub do_preview_share {
     # let's build the email
 
     # - first, load the entry, so we can build he subject
-    require MT::Entry;
-    my $e = MT::Entry->load($entry_id);
+    my $e = MT->model('entry')->load($entry_id);
 
     # TODO: Make the subject and body more configurable
 
     my $subject
-        = 'Shared preview of "' . $e->title . '" on ' . $e->blog->name;
+        = '[' . $e->blog->name . '] ' . $app->user->name . ' shared a preview of "' . $e->title . '"';
 
     my %head = ( To => \@recipients, Subject => $subject );
     my $body = <<"EMAIL";
