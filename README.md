@@ -26,3 +26,5 @@ None
 ## UI Changes
 
 * Adds a "Share Preview" button to the live entry preview header.  This action will save the entry being previewed. _(N.B. that means that if the entry being previewed had been changed to published but not saved, it *will* be published if the preview is shared and the PreviewShareSkipPublish setting is turned off)_
+
+  The shared preview will also include any index templates set to be rebuild on entry publish (_i.e._, static).

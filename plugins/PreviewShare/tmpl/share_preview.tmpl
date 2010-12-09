@@ -18,6 +18,15 @@
    id="share_url"
    label="Preview URL">
   <p><a href="<mt:var name="preview_url">"><mt:var name="preview_url"></a></p>
+  <mt:loop name="preview_urls">
+    <mt:if __first__>
+    <ul>
+    </mt:if>
+    <li><a href="<mt:var name="preview_url">"><mt:var name="preview_url"></a></li>
+    <mt:if __last__>
+    </ul>
+    </mt:if>
+  </mt:loop>
 </mtapp:setting>
 
 <mtapp:setting

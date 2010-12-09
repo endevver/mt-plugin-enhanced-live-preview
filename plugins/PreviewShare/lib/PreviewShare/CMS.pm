@@ -42,6 +42,13 @@ sub preview_share {
             || File::Spec->catdir( $app->static_file_path, "support",
             "previews" );
 
+        # each entry is getting its own preview directory
+        # so we can have multiple files in there
+        $base_share_dir = File::Spec->catdir( $base_share_dir, $preview );
+
+        # cache the share directory for the post save template building
+        $app->request( 'preview_share_dir', $base_share_dir );
+
         # make sure the directory exists
         # before copying a file over
         my $fmgr = $app->blog->file_mgr;
@@ -50,7 +57,7 @@ sub preview_share {
         my $ext = $app->blog->file_extension || '';
         $ext = '.' . $ext if $ext ne '';
         my $preview_share_file
-            = File::Spec->catfile( $base_share_dir, $preview . $ext );
+            = File::Spec->catfile( $base_share_dir, 'entry' . $ext );
 
         $fmgr->put( $file, $preview_share_file )
             or return $app->error(
@@ -58,16 +65,20 @@ sub preview_share {
 
         # build the url for the preview
 
-        my $base_share_url = $app->config->PreviewShareUrl ||
-            $app->static_path . "support/previews/"; 
+        my $base_share_url = $app->config->PreviewShareUrl
+            || $app->static_path . "support/previews/";
         $base_share_url .= '/' unless $base_share_url =~ /\/$/;
-        $base_share_url .= $preview . $ext;
+        $base_share_url .= $preview . '/';
 
-	if ($base_share_url =~ m!^/!) {
-	    # relative path, prepend blog domain
-	    my ($blog_domain) = $app->blog->archive_url =~ m|(.+://[^/]+)|;
-	    $base_share_url = $blog_domain . $base_share_url;
-	}
+        $app->request( 'preview_share_base_url', $base_share_url );
+        $base_share_url .= 'entry' . $ext;
+
+        if ( $base_share_url =~ m!^/! ) {
+
+            # relative path, prepend blog domain
+            my ($blog_domain) = $app->blog->archive_url =~ m|(.+://[^/]+)|;
+            $base_share_url = $blog_domain . $base_share_url;
+        }
 
         # stash it
         $app->request( 'preview_file',      $file );
@@ -89,6 +100,56 @@ sub preview_share {
         # we've been forwarded here
         # so it's time to build the template to pass to the user
 
+        # let's build the index template(s)
+        require MT::Template;
+        my @tmpls
+            = MT::Template->load(
+            { blog_id => $entry->blog_id, type => 'index', rebuild_me => 1 }
+            );
+
+        my $base_dir = $app->request('preview_share_dir');
+        my $base_url = $app->request('preview_share_base_url');
+        my $url      = $app->request('preview_share_url');
+
+        my @preview_index_urls = ();
+        $app->request( 'building_preview_entry', $entry );
+        foreach my $tmpl (@tmpls) {
+
+            # create a faked finfo
+            require MT::FileInfo;
+            my $finfo = MT::FileInfo->new;
+            $finfo->{from_queue} = 1; # make sure to skip the queue
+            $finfo->virtual(0);       # make sure it isn't saved, just in case
+
+            # now to screw with the template object
+            # so we can get the output where we want it
+
+            # N.B.: this is assuming that the outfile column
+            # is both relative and doesn't climb up the directory tree
+            # (e.g., "index.html" instead of "../something/whatever.html")
+
+            my $new_tmpl  = $tmpl->clone;
+            my $orig_file = $new_tmpl->outfile;
+            $new_tmpl->outfile(
+                File::Spec->catfile( $base_dir, $orig_file ) );
+
+            $app->rebuild_indexes(
+                BlogID   => $entry->blog_id,
+                Template => $new_tmpl,
+                FileInfo => $finfo
+
+                )
+                or do {
+                print STDERR "Error publishing "
+                    . $tmpl->outfile . ": "
+                    . $app->publisher->errstr
+                    . "\n";    # TODO: do more about catching errors here
+                next;
+                };
+
+            push @preview_index_urls, $base_url . $orig_file;
+        }
+
         # nix the redirect from the save
         # since MT defers to that over a defined response page
         my $redirect = delete $app->{redirect};
@@ -106,11 +167,11 @@ sub preview_share {
         }
 
         my $file = $app->request('preview_file');
-        my $url  = $app->request('preview_share_url');
 
         $app->session( 'preview_entry_id', $entry->id );
         $app->session( 'preview_file',     $file );
         $app->session( 'preview_url',      $url );
+        $app->session( 'preview_urls',     \@preview_index_urls );
         $app->session( 'preview_redirect', $redirect );
 
         return $app->redirect(
@@ -129,7 +190,9 @@ sub start_preview_share {
     $params{entry_id}     = $app->session('preview_entry_id');
     $params{preview_file} = $app->session('preview_file');
     $params{preview_url}  = $app->session('preview_url');
-    $params{redirect}     = $app->session('preview_redirect');
+    my $preview_urls = $app->session('preview_urls') || [];
+    $params{preview_urls} = [ map { { preview_url => $_ } } @$preview_urls ];
+    $params{redirect} = $app->session('preview_redirect');
 
     return $app->load_tmpl( 'share_preview.tmpl', \%params );
 }
@@ -158,7 +221,6 @@ sub post_save_entry {
         # after being forwarded to save_entry
         # we should re-forward to the sharing code
         $app->forward( 'preview_share', $entry );
-
     }
 
     return 1;
@@ -178,9 +240,10 @@ sub do_preview_share {
     # what if they're not sharing with anybody?
 
     my %params;
-    my $entry_id    = $app->session('preview_entry_id');
-    my $preview_url = $app->session('preview_url');
-    my $redirect    = $app->session('preview_redirect');
+    my $entry_id     = $app->session('preview_entry_id');
+    my $preview_url  = $app->session('preview_url');
+    my $preview_urls = $app->session('preview_urls');
+    my $redirect     = $app->session('preview_redirect');
 
     $params{preview_file} = $app->session('preview_file');
 
@@ -188,6 +251,7 @@ sub do_preview_share {
     $app->session( 'preview_entry_id', '' );
     $app->session( 'preview_file',     '' );
     $app->session( 'preview_url',      '' );
+    $app->session( 'preview_urls',     undef );
     $app->session( 'preview_redirect', '' );
 
     # let's build the email
@@ -196,13 +260,19 @@ sub do_preview_share {
     my $e = MT->model('entry')->load($entry_id);
 
     # TODO: Make the subject and body more configurable
-
+    my $index_urls = join( "\n * ", @$preview_urls );
+    $index_urls = "\nAnd the index files:\n * $index_urls" if $index_urls;
     my $subject
-        = '[' . $e->blog->name . '] ' . $app->user->name . ' shared a preview of "' . $e->title . '"';
+        = '['
+        . $e->blog->name . '] '
+        . $app->user->name
+        . ' shared a preview of "'
+        . $e->title . '"';
 
     my %head = ( To => \@recipients, Subject => $subject );
     my $body = <<"EMAIL";
 View the preview: $preview_url
+$index_urls
 EMAIL
 
     $body .= "\n\n$share_message\n" if $share_message;
