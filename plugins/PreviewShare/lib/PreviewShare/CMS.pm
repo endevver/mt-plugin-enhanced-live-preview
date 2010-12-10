@@ -269,18 +269,20 @@ sub do_preview_share {
         . ' shared a preview of "'
         . $e->title . '"';
 
-    my %head = ( To => \@recipients, Subject => $subject );
     my $body = <<"EMAIL";
 View the preview: $preview_url
 $index_urls
 EMAIL
-
     $body .= "\n\n$share_message\n" if $share_message;
 
-    # send the preview notification email
+    foreach my $recip (@recipients) {
+        my %head = ( To => $recip, Subject => $subject );
 
-    require MT::Mail;
-    MT::Mail->send( \%head, $body ) or die MT::Mail->errstr;
+        # send the preview notification email
+
+        require MT::Mail;
+        MT::Mail->send( \%head, $body ) or die MT::Mail->errstr;
+    }
 
     if ( $app->config->PreviewShareLogPreviews ) {
         $app->log(
