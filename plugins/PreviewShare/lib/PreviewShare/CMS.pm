@@ -196,7 +196,7 @@ sub preview_share {
         }
 
         my $file = $app->request('preview_file');
-
+        $url =~ s/entry\.html$/shared_preview.html/;
         $app->session( 'preview_entry_id', $entry->id );
         $app->session( 'preview_file',     $file );
         $app->session( 'preview_url',      $url );
