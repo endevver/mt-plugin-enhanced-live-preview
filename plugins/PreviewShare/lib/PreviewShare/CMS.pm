@@ -107,6 +107,10 @@ sub preview_share {
             { blog_id => $entry->blog_id, type => 'index', rebuild_me => 1 }
             );
 
+        # skip non "web" pages (i.e. no CSS, XML, etc.)
+        # TODO: make the extensions a config option
+        @tmpls
+            = grep { $_->outfile && $_->outfile =~ /\.(php|html)$/i } @tmpls;
         my $base_dir = $app->request('preview_share_dir');
         my $base_url = $app->request('preview_share_base_url');
         my $url      = $app->request('preview_share_url');
