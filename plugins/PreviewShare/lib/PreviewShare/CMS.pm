@@ -115,8 +115,15 @@ sub preview_share {
         my $base_url = $app->request('preview_share_base_url');
         my $url      = $app->request('preview_share_url');
 
-        my @preview_index_urls = ();
         $app->request( 'building_preview_entry', $entry );
+        my @preview_tmpls = ();
+        push @preview_tmpls,
+            {
+            template_id   => 'entry',
+            template_name => 'Entry',
+            template_url  => $url
+            };
+
         foreach my $tmpl (@tmpls) {
 
             # create a faked finfo
@@ -151,8 +158,26 @@ sub preview_share {
                 next;
                 };
 
-            push @preview_index_urls, $base_url . $orig_file;
+            push @preview_tmpls,
+                {
+                template_id   => $tmpl->id,
+                template_url  => $base_url . $orig_file,
+                template_name => $tmpl->name
+                };
         }
+
+        # now that we've built the templates,
+        # we need to build the list of templates
+        my $preview_tmpl   = $app->load_tmpl('share_page.tmpl');
+        my $preview_params = { template_loop => [@preview_tmpls], };
+        my $preview_html   = $preview_tmpl->output($preview_params);
+
+        # TODO: Make the filename configurable?
+        my $preview_index_file
+            = File::Spec->catfile( $base_dir, 'shared_preview.html' );
+
+        my $fmgr = $app->blog->file_mgr;
+        $fmgr->put_data( $preview_html, $preview_index_file );
 
         # nix the redirect from the save
         # since MT defers to that over a defined response page
@@ -175,7 +200,6 @@ sub preview_share {
         $app->session( 'preview_entry_id', $entry->id );
         $app->session( 'preview_file',     $file );
         $app->session( 'preview_url',      $url );
-        $app->session( 'preview_urls',     \@preview_index_urls );
         $app->session( 'preview_redirect', $redirect );
 
         return $app->redirect(
@@ -194,9 +218,7 @@ sub start_preview_share {
     $params{entry_id}     = $app->session('preview_entry_id');
     $params{preview_file} = $app->session('preview_file');
     $params{preview_url}  = $app->session('preview_url');
-    my $preview_urls = $app->session('preview_urls') || [];
-    $params{preview_urls} = [ map { { preview_url => $_ } } @$preview_urls ];
-    $params{redirect} = $app->session('preview_redirect');
+    $params{redirect}     = $app->session('preview_redirect');
 
     return $app->load_tmpl( 'share_preview.tmpl', \%params );
 }
@@ -244,10 +266,9 @@ sub do_preview_share {
     # what if they're not sharing with anybody?
 
     my %params;
-    my $entry_id     = $app->session('preview_entry_id');
-    my $preview_url  = $app->session('preview_url');
-    my $preview_urls = $app->session('preview_urls');
-    my $redirect     = $app->session('preview_redirect');
+    my $entry_id    = $app->session('preview_entry_id');
+    my $preview_url = $app->session('preview_url');
+    my $redirect    = $app->session('preview_redirect');
 
     $params{preview_file} = $app->session('preview_file');
 
@@ -255,7 +276,6 @@ sub do_preview_share {
     $app->session( 'preview_entry_id', '' );
     $app->session( 'preview_file',     '' );
     $app->session( 'preview_url',      '' );
-    $app->session( 'preview_urls',     undef );
     $app->session( 'preview_redirect', '' );
 
     # let's build the email
@@ -264,8 +284,6 @@ sub do_preview_share {
     my $e = MT->model('entry')->load($entry_id);
 
     # TODO: Make the subject and body more configurable
-    my $index_urls = join( "\n * ", @$preview_urls );
-    $index_urls = "\nAnd the index files:\n * $index_urls" if $index_urls;
     my $subject
         = '['
         . $e->blog->name . '] '
@@ -275,7 +293,6 @@ sub do_preview_share {
 
     my $body = <<"EMAIL";
 View the preview: $preview_url
-$index_urls
 EMAIL
     $body .= "\n\n$share_message\n" if $share_message;
 
