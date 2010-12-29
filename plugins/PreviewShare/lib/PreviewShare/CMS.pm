@@ -108,16 +108,35 @@ sub preview_share {
         # so it's time to build the template to pass to the user
 
         # let's build the index template(s)
+
         require MT::Template;
-        my @tmpls
-            = MT::Template->load(
-            { blog_id => $entry->blog_id, type => 'index', rebuild_me => 1 }
+        my @tmpls;
+        my $p = MT->component('PreviewShare');
+
+        # prefer the configured list of templates
+        # otherwise, load up any staticly built .php or .html files
+        if (my $tmpl_ids = $p->get_config_value(
+                'preview_templates', 'blog:' . $entry->blog_id
+            )
+            )
+        {
+            @tmpls
+                = grep {defined} @{ MT::Template->lookup_multi($tmpl_ids) };
+        }
+        else {
+
+            @tmpls = MT::Template->load(
+                {   blog_id    => $entry->blog_id,
+                    type       => 'index',
+                    rebuild_me => 1
+                }
             );
 
-        # skip non "web" pages (i.e. no CSS, XML, etc.)
-        # TODO: make the extensions a config option
-        @tmpls
-            = grep { $_->outfile && $_->outfile =~ /\.(php|html)$/i } @tmpls;
+            # skip non "web" pages (i.e. no CSS, XML, etc.)
+            @tmpls = grep { $_->outfile && $_->outfile =~ /\.(php|html)$/i }
+                @tmpls;
+        }
+
         my $base_dir = $app->request('preview_share_dir');
         my $base_url = $app->request('preview_share_base_url');
         my $url      = $app->request('preview_share_url');
