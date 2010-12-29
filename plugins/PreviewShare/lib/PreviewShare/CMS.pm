@@ -121,7 +121,7 @@ sub preview_share {
             )
         {
             if ( !ref($tmpl_ids) ) {
-                @tmpls = ( MT::Template->load($tmpl_ids) );
+                @tmpls = ( MT::Template->lookup($tmpl_ids) );
             }
             else {
                 @tmpls = grep {defined}
