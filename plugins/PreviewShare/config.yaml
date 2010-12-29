@@ -12,9 +12,15 @@ config_settings:
   PreviewShareSkipPublish:
     default: 1
 
-settings:
+config_types:
+  index_templates:
+    handler: $PreviewShare::PreviewShare::CMS::__hdlr_ca_index_templates
+
+options:
   preview_templates:
     scope: blog
+    type: index_templates
+    label: 'Index Templates'
 
 applications:
   cms:

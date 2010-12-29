@@ -331,4 +331,33 @@ EMAIL
     return $app->redirect($redirect);
 }
 
+sub __hdlr_ca_index_templates {
+    my ( $app, $ctx, $field_id, $field, $value ) = @_;
+
+    return "" unless my $blog = $app->blog;
+
+    my %checked = map { $_ => 1 } @$value;
+
+    my $out = '';
+    require MT::Template;
+    my $tmpl_iter = MT::Template->load_iter(
+        { type => 'index', blog_id   => $blog->id },
+        { sort => 'name',  direction => 'ascend' }
+    );
+
+    $out .= '<ul>';
+    while ( my $tmpl = $tmpl_iter->() ) {
+        $out
+            .= qq!<li><input type="checkbox" name="$field_id" value="!
+            . $tmpl->id
+            . q!" class="cb"!
+            . ( $checked{ $tmpl->id } ? ' checked="checked"' : '' ) . '/> '
+            . $tmpl->name . '</li>';
+    }
+
+    $out .= '</ul>';
+
+    return $out;
+}
+
 1;
