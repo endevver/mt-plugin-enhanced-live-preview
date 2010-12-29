@@ -12,6 +12,10 @@ config_settings:
   PreviewShareSkipPublish:
     default: 1
 
+settings:
+  preview_templates:
+    scope: blog
+
 applications:
   cms:
     methods:
