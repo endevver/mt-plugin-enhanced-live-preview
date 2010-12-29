@@ -52,7 +52,13 @@ sub preview_share {
         # make sure the directory exists
         # before copying a file over
         my $fmgr = $app->blog->file_mgr;
-        $fmgr->mkpath($base_share_dir) if !-d $base_share_dir;
+        if ( !-d $base_share_dir ) {
+
+            $fmgr->mkpath($base_share_dir)
+                or return $app->error(
+                "Error creating preview directory ($base_share_dir): "
+                    . $fmgr->errstr );
+        }
 
         my $ext = $app->blog->file_extension || '';
         $ext = '.' . $ext if $ext ne '';
@@ -61,7 +67,8 @@ sub preview_share {
 
         $fmgr->put( $file, $preview_share_file )
             or return $app->error(
-            "Error writing preview file: " . $fmgr->errstr );
+            "Error writing preview file ($preview_share_file): "
+                . $fmgr->errstr );
 
         # build the url for the preview
 
