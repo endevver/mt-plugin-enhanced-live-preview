@@ -120,8 +120,15 @@ sub preview_share {
             )
             )
         {
-            @tmpls
-                = grep {defined} @{ MT::Template->lookup_multi($tmpl_ids) };
+            if ( !ref($tmpl_ids) ) {
+                @tmpls = ( MT::Template->load($tmpl_ids) );
+            }
+            else {
+                @tmpls = grep {defined}
+                    @{ MT::Template->lookup_multi($tmpl_ids) };
+            }
+
+            $_->build_type(1) foreach @tmpls;
         }
         else {
 
@@ -173,7 +180,8 @@ sub preview_share {
             $app->rebuild_indexes(
                 BlogID   => $entry->blog_id,
                 Template => $new_tmpl,
-                FileInfo => $finfo
+                FileInfo => $finfo,
+                Force    => 1,
 
                 )
                 or do {
@@ -355,6 +363,9 @@ sub __hdlr_ca_index_templates {
 
     return "" unless my $blog = $app->blog;
 
+    if ( !ref($value) ) {
+        $value = [$value];
+    }
     my %checked = map { $_ => 1 } @$value;
 
     my $out = '';
