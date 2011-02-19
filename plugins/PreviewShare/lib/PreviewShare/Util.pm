@@ -4,6 +4,8 @@ package PreviewShare::Util;
 use strict;
 use warnings;
 
+use MT::Util qw( offset_time_list );
+
 sub build_file_filter {
     my ( $cb, %cb_args ) = @_;
 
