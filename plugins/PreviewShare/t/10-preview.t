@@ -11,7 +11,7 @@ BEGIN {
 
 use MT::Test qw( :app :db :data );
 
-use Test::More tests => 2;
+use Test::More tests => 4;
 
 require MT;
 MT->config->PreviewShareDirectory('t/site/previews');
@@ -40,40 +40,54 @@ $map->template_id( $tmpl->id );
 $map->save or die $map->errstr;
 
 require MT::Author;
-my $a   = MT::Author->load(1);
-my $app = _run_app(
-    $ENV{MT_APP},
-    {   __test_user => $a,
-        __mode      => 'preview_entry',
-        %entry,
+my $a = MT::Author->load(1);
+my $b = MT::Blog->load(1);
+for my $i ( 0 .. 1 ) {
+    if ($i) {
+        $b->days_on_index(10);
+        $b->entries_on_index(0);
+        $b->save;
     }
-);
-like( $app->{__test_output}, qr/mt:mode="preview_share"/,
-    "Preview Share button appears in preview page" );
+    else {
+        $b->entries_on_index(10);
+        $b->days_on_index(0);
+        $b->save;
+    }
+    my $app = _run_app(
+        $ENV{MT_APP},
+        {   __test_user => $a,
+            __mode      => 'preview_entry',
+            %entry,
+        }
+    );
+    like( $app->{__test_output}, qr/mt:mode="preview_share"/,
+        "Preview Share button appears in preview page" );
 
-# now we parse out the preview and magic token values
-my @vals;
-for my $f (qw( magic_token _preview_file )) {
-    push @vals,
-        ( $app->{__test_output}
-            =~ m!<input type="hidden" name="$f" value="([^"]+)"! );
+    # now we parse out the preview and magic token values
+    my @vals;
+    for my $f (qw( magic_token _preview_file )) {
+        push @vals,
+            ( $app->{__test_output}
+                =~ m!<input type="hidden" name="$f" value="([^"]+)"! );
+    }
+    my ( $token, $_preview ) = @vals;
+
+    out_like(
+        $ENV{MT_APP},
+        {   __test_user   => $a,
+            __mode        => 'preview_share',
+            magic_token   => $token,
+            _preview_file => $_preview,
+            %entry,
+        },
+        qr!Location: /cgi-bin/mt.cgi\?__mode=start_preview_share&blog_id=1!,
+        "Got the correct redirect after clicking the share button"
+    );
+
+    $app = _run_app( $ENV{MT_APP},
+        { __test_user => $a, __mode => 'start_preview_share', blog_id => 1 }
+    );
 }
-my ( $token, $_preview ) = @vals;
-
-out_like(
-    $ENV{MT_APP},
-    {   __test_user   => $a,
-        __mode        => 'preview_share',
-        magic_token   => $token,
-        _preview_file => $_preview,
-        %entry,
-    },
-    qr!Location: /cgi-bin/mt.cgi\?__mode=start_preview_share&blog_id=1!,
-    "Got the correct redirect after clicking the share button"
-);
-
-$app = _run_app( $ENV{MT_APP},
-    { __test_user => $a, __mode => 'start_preview_share', blog_id => 1 } );
 
 # let's try an existing entry
 # has to be published to test the non-publishing bit
