@@ -12,7 +12,49 @@
 </form>
 </mt:setvarblock>
 
+<mt:setvarblock name="html_head" append="1">
+    <script type="text/javascript" src="<$mt:var name="static_uri"$>js/tc/tagcomplete.js"></script>
+</mt:setvarblock>
+
 <mt:include name="include/header.tmpl">
+
+<script type="text/javascript">
+
+var words = <mt:var name="share_completes" to_json="1">
+
+function setupAutoComplete() {
+  autoShare= new TC.TagComplete('share_to', words);
+  autoShare.delimiter = ',';
+}
+
+TC.attachLoadEvent(setupAutoComplete);
+</script>
+
+<style type="text/css">
+#share_to_completion {
+    display: none;
+    position: absolute;
+    border: 1px solid gray;
+    background-color: #eaf2ff;
+    z-index: 20;
+}
+
+* html #share_to_completion {
+    top:-21px;
+    left:592px;
+}
+
+#share_to_completion div {
+    padding: 1px 2px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+#share_to_completion .complete-highlight {
+    color: #fff;
+    background-color: #85afc4;
+}
+</style>
 
 <mtapp:setting
    id="share_url"
@@ -35,7 +77,10 @@
    show_hint="1"
    required="1"
    label="Share Preview With">
-  <input type="text" class="full-width" name="share_to" id="share_to" />
+  <div class="textarea_wrapper">
+    <input type="text" class="full-width" name="share_to" id="share_to" />
+  </div>
+  <div id="share_to_completion"></div>
 </mtapp:setting>
 
 <mtapp:setting

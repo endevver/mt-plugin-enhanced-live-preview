@@ -254,6 +254,10 @@ sub start_preview_share {
     $params{preview_url}  = $app->session('preview_url');
     $params{redirect}     = $app->session('preview_redirect');
 
+    # build the list for the autocomplete
+    $params{share_completes}
+        = [ grep {defined} map { $_->email } MT::Author->load ];
+
     return $app->load_tmpl( 'share_preview.tmpl', \%params );
 }
 
