@@ -258,8 +258,11 @@ sub start_preview_share {
     my $author_complete_options = {};
     $author_complete_options->{status} = MT::Author::ACTIVE()
         unless $app->config->PreviewShareCompleteInactive;
-    $params{share_completes} = [ grep {defined}
-            map { $_->email } MT::Author->load($author_complete_options) ];
+    $params{share_completes} = [
+        grep {$_}
+            map { ( $_->email, $_->name, $_->nickname ) }
+            MT::Author->load($author_complete_options)
+    ];
 
     return $app->load_tmpl( 'share_preview.tmpl', \%params );
 }
@@ -337,7 +340,30 @@ View the preview: $preview_url
 EMAIL
     $body .= "\n\n$share_message\n" if $share_message;
 
+RECIPIENT:
     foreach my $recip (@recipients) {
+        unless ( $recip =~ /@/ ) {
+
+            # it's a name without an @, so not an email
+            # first try name, than nickname
+            if ( my $a = MT::Author->load( { name => $recip } ) ) {
+                next RECIPIENT
+                    unless $a->email;
+                $recip = $a->email;
+            }
+            elsif ( my $a = MT::Author->load( { nickname => $recip } ) ) {
+                next RECIPIENT
+                    unless $a->email;
+                $recip = $a->email;
+            }
+            else {
+
+                # couldn't find an author based on name or nickname
+                # skip it
+                next RECIPIENT;
+            }
+        }
+
         my %head = ( To => $recip, Subject => $subject );
 
         # send the preview notification email
