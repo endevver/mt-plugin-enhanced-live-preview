@@ -11,6 +11,8 @@ config_settings:
     default: 1
   PreviewShareSkipPublish:
     default: 1
+  PreviewShareCompleteInactive:
+    default: 0
 
 config_types:
   index_templates:

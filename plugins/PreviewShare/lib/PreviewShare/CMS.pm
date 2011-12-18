@@ -255,8 +255,11 @@ sub start_preview_share {
     $params{redirect}     = $app->session('preview_redirect');
 
     # build the list for the autocomplete
-    $params{share_completes}
-        = [ grep {defined} map { $_->email } MT::Author->load ];
+    my $author_complete_options = {};
+    $author_complete_options->{status} = MT::Author::ACTIVE()
+        unless $app->config->PreviewShareCompleteInactive;
+    $params{share_completes} = [ grep {defined}
+            map { $_->email } MT::Author->load($author_complete_options) ];
 
     return $app->load_tmpl( 'share_preview.tmpl', \%params );
 }
