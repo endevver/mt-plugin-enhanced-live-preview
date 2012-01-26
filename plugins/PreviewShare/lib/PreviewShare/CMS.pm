@@ -77,15 +77,15 @@ sub preview_share {
         $base_share_url .= '/' unless $base_share_url =~ /\/$/;
         $base_share_url .= $preview . '/';
 
-        $app->request( 'preview_share_base_url', $base_share_url );
-        $base_share_url .= 'entry' . $ext;
-
         if ( $base_share_url =~ m!^/! ) {
 
             # relative path, prepend blog domain
             my ($blog_domain) = $app->blog->archive_url =~ m|(.+://[^/]+)|;
             $base_share_url = $blog_domain . $base_share_url;
         }
+
+        $app->request( 'preview_share_base_url', $base_share_url );
+        $base_share_url .= 'entry' . $ext;
 
         # stash it
         $app->request( 'preview_file',      $file );
@@ -121,11 +121,32 @@ sub preview_share {
             )
         {
             if ( !ref($tmpl_ids) ) {
-                @tmpls = ( MT::Template->lookup($tmpl_ids) );
+                @tmpls = (
+                    $tmpl_ids =~ /^\d+$/
+                    ? MT::Template->lookup($tmpl_ids)
+                    : MT::Template->load(
+                        {   blog_id    => $entry->blog_id,
+                            identifier => $tmpl_ids
+                        }
+                    )
+                );
             }
             else {
-                @tmpls = grep {defined}
-                    @{ MT::Template->lookup_multi($tmpl_ids) };
+                @tmpls = grep {defined} map {
+                    my $tmpl_id = $_;
+                    my $tmpl;
+                    if ( $tmpl_id =~ /^\d+$/ ) {
+                        MT::Template->lookup($tmpl_id);
+                    }
+                    else {
+                        MT::Template->load(
+                            {   blog_id    => $entry->blog_id,
+                                identifier => $tmpl_id
+                            }
+                        );
+                    }
+                } @$tmpl_ids;
+
             }
 
             $_->build_type(1) foreach @tmpls;
@@ -412,9 +433,14 @@ sub __hdlr_ca_index_templates {
     while ( my $tmpl = $tmpl_iter->() ) {
         $out
             .= qq!<li><input type="checkbox" name="$field_id" value="!
-            . $tmpl->id
+            . $tmpl->identifier
             . q!" class="cb"!
-            . ( $checked{ $tmpl->id } ? ' checked="checked"' : '' ) . '/> '
+            . (
+            ( $checked{ $tmpl->id } || $checked{ $tmpl->identifier } )
+            ? ' checked="checked"'
+            : ''
+            )
+            . '/> '
             . $tmpl->name . '</li>';
     }
 
