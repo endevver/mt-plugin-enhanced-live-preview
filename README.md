@@ -1,3 +1,10 @@
+# Preview Share plugin for Movable Type
+
+As the name says, the Preview Share plugin for Movable Type allows authors to
+share Entry previews with others. When previewing an Entry a new button
+labeled "Share Preview" is available -- click it and you'll be given a URL to
+share, as well as opportunity to email this URL (and specify a message) to a
+list of recipients.
 
 ## Configuration Settings
 
