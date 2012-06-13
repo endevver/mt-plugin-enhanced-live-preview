@@ -291,6 +291,9 @@ sub start_preview_share {
 sub source_preview_strip {
     my ( $cb, $app, $tmpl ) = @_;
 
+    # Preview Share only works on Entries, so hide it from Pages.
+    return if $app->param('_type') eq 'page';
+
     my $old = q{name="edit_button_value"$></button>};
     my $new = qq{<button
 	        mt:mode="preview_share"
