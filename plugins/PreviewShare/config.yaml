@@ -1,6 +1,7 @@
 name: Preview Share
 description: Add a 'Share Preview' button to the entry preview page, which allows users to store a copy of the preview and share it with others via email.
 version: 1.3.1
+plugin_link: https://github.com/endevver/mt-plugin-enhanced-live-preview
 
 config_settings:
   PreviewShareDirectory:
