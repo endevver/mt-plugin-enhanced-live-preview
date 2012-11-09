@@ -369,13 +369,14 @@ RECIPIENT:
         unless ( $recip =~ /@/ ) {
 
             # it's a name without an @, so not an email
-            # first try name, than nickname
-            if ( my $a = MT::Author->load( { name => $recip } ) ) {
+            # first try name, then nickname
+            my $a;
+            if ( $a = MT::Author->load( { name => $recip } ) ) {
                 next RECIPIENT
                     unless $a->email;
                 $recip = $a->email;
             }
-            elsif ( my $a = MT::Author->load( { nickname => $recip } ) ) {
+            elsif ( $a = MT::Author->load( { nickname => $recip } ) ) {
                 next RECIPIENT
                     unless $a->email;
                 $recip = $a->email;
