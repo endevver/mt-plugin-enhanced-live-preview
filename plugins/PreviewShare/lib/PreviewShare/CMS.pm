@@ -88,7 +88,6 @@ sub preview_share {
         $base_share_url .= 'entry' . $ext;
 
         # stash it
-        $app->request( 'preview_file',      $file );
         $app->request( 'preview_share_url', $base_share_url );
 
         # forward to the save
@@ -250,10 +249,8 @@ sub preview_share {
             );
         }
 
-        my $file = $app->request('preview_file');
         $url =~ s/entry\.html$/shared_preview.html/;
         $app->session( 'preview_entry_id', $entry->id );
-        $app->session( 'preview_file',     $file );
         $app->session( 'preview_url',      $url );
         $app->session( 'preview_redirect', $redirect );
 
@@ -271,7 +268,6 @@ sub start_preview_share {
 
     my %params;
     $params{entry_id}     = $app->session('preview_entry_id');
-    $params{preview_file} = $app->session('preview_file');
     $params{preview_url}  = $app->session('preview_url');
     $params{redirect}     = $app->session('preview_redirect');
 
@@ -338,11 +334,8 @@ sub do_preview_share {
     my $preview_url = $app->session('preview_url');
     my $redirect    = $app->session('preview_redirect');
 
-    $params{preview_file} = $app->session('preview_file');
-
     # clear out the session, since we're actually sharing the preview now
     $app->session( 'preview_entry_id', '' );
-    $app->session( 'preview_file',     '' );
     $app->session( 'preview_url',      '' );
     $app->session( 'preview_redirect', '' );
 
