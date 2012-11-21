@@ -393,7 +393,7 @@ RECIPIENT:
     if ( $app->config->PreviewShareLogPreviews ) {
         $app->log(
             {   message => $app->user->name
-                    . 'shared preview of entry #'
+                    . ' shared preview of entry #'
                     . $e->id . ' ('
                     . $e->title
                     . ') with '
