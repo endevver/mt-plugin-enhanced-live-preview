@@ -250,8 +250,13 @@ sub preview_share {
         }
 
         $url =~ s/entry\.html$/shared_preview.html/;
-        $app->session( 'preview_entry_id', $entry->id );
+        # The string `ttp:/` seems to be special in that in some environments
+        # the unserialization process effectively breaks the session and causes
+        # the user to re-login. Just remove the string `http://` because it's
+        # simple and complete, and replace it later.
+        $url =~ s!http://!!;
         $app->session( 'preview_url',      $url );
+        $app->session( 'preview_entry_id', $entry->id );
         $app->session( 'preview_redirect', $redirect );
 
         return $app->redirect(
@@ -267,8 +272,9 @@ sub start_preview_share {
     my $app = shift;
 
     my %params;
+    # Replace the `http://` that was stripped from the preview_url previously.
+    $params{preview_url}  = 'http://' . $app->session('preview_url');
     $params{entry_id}     = $app->session('preview_entry_id');
-    $params{preview_url}  = $app->session('preview_url');
     $params{redirect}     = $app->session('preview_redirect');
 
     # build the list for the autocomplete
