@@ -188,7 +188,12 @@ sub preview_share {
             template_url  => $url
         };
 
-        foreach my $tmpl (@tmpls) {
+        my $timer = $app->get_timer();
+        $timer->pause_partial if $timer;
+
+        my $cnt = 0;
+
+        TEMPLATE: foreach my $tmpl (@tmpls) {
 
             # create a faked finfo
             require MT::FileInfo;
@@ -208,28 +213,39 @@ sub preview_share {
             $new_tmpl->outfile(
                 File::Spec->catfile( $base_dir, $orig_file ) );
 
-            $app->rebuild_indexes(
-                BlogID   => $entry->blog_id,
-                Template => $new_tmpl,
-                FileInfo => $finfo,
-                Force    => 1,
+            my $tmpl_desc = ($new_tmpl->identifier || $new_tmpl->name)
+                  . ':blogID='.$entry->blog_id;
 
-                )
-                or do {
-                print STDERR "Error publishing "
-                    . $tmpl->outfile . ": "
-                    . $app->publisher->errstr
-                    . "\n";    # TODO: do more about catching errors here
-                next;
-                };
+            ###l4p $logger->debug( ++$cnt . ") Now rebuilding $tmpl_desc" );
 
-            push @preview_tmpls,
-                {
-                template_id   => $tmpl->id,
-                template_url  => $base_url . $orig_file,
-                template_name => $tmpl->name
-                };
+            unless ( $app->rebuild_indexes(
+                       BlogID   => $entry->blog_id,
+                       Template => $new_tmpl,
+                       FileInfo => $finfo,
+                       Force    => 1,  ) ) {
+
+            my $msg = "Error publishing " . $tmpl->outfile . ": "
+                    . ($app->errstr||$app->publisher->errstr);
+            # TODO: do more about catching errors here
+            warn $msg;
+            ###l4p $logger->error($msg);
+            $timer && $timer->mark("PreviewShareAborted:$tmpl_desc");
+            next TEMPLATE;
         }
+
+        $timer && $timer->mark("PreviewShareRebuilt:$tmpl_desc");
+        ###l4p $logger->debug( "Finished rebuilding $tmpl_desc" );
+
+        push( @preview_tmpls, {
+            template_id   => $tmpl->id,
+            template_url  => $base_url . $orig_file,
+            template_name => $tmpl->name
+        });
+        }
+
+        $timer && $timer->mark('PreviewShareBuildComplete');
+        ###l4p $logger->debug('Finished with all that rebuilding!');
+        ###l4p $timer && $logger->debug( $timer->dump() );
 
         # now that we've built the templates,
         # we need to build the list of templates
