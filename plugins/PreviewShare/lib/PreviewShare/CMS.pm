@@ -257,6 +257,8 @@ sub preview_share {
         my $preview_index_file
             = File::Spec->catfile( $base_dir, 'shared_preview.html' );
 
+        ###l4p $logger->debug('Creating preview index file '.$preview_index_file);
+
         my $fmgr = $app->blog->file_mgr;
         $fmgr->put_data( $preview_html, $preview_index_file );
 
@@ -265,6 +267,7 @@ sub preview_share {
         my $redirect = delete $app->{redirect};
 
         if ( $app->config->PreviewShareSkipPublish ) {
+
             $redirect = $app->uri(
                 mode => 'view',
                 args => {
@@ -274,6 +277,8 @@ sub preview_share {
                     saved_changes => 1
                 }
             );
+        ###l4p $logger->debug('PreviewShareSkipPublish '.$app->config->PreviewShareSkipPublish);
+        ###l4p $logger->debug('Redirect set to '.$redirect);
         }
 
         $url =~ s/entry\.html$/shared_preview.html/;
@@ -286,6 +291,7 @@ sub preview_share {
         $app->session( 'preview_entry_id', $entry->id );
         $app->session( 'preview_redirect', $redirect );
 
+        ###l4p $logger->info('Leaving method, redirecting to '.$app->uri(mode => 'start_preview_share', args => { blog_id => $app->blog->id }));
         return $app->redirect(
             $app->uri(
                 mode => 'start_preview_share',
@@ -325,7 +331,7 @@ sub source_preview_strip {
 
     my $old = q{name="edit_button_value"$></button>};
     my $new = qq{<button
-	        mt:mode="preview_share"
+                mt:mode="preview_share"
                 type="submit"
                 name="preview_share"
                 value="preview_share"
