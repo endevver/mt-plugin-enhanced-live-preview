@@ -4,10 +4,14 @@ package PreviewShare::CMS;
 use strict;
 use warnings;
 
+use MT::Logger::Log4perl qw( get_logger :resurrect l4mtdump );
+
 use File::Spec;
 
 sub preview_share {
     my ( $app, @fwd_params ) = @_;
+    ###l4p my $logger = get_logger(); $logger->trace('preview_share');
+    ###l4p $logger->debug('fwd_params: ', @fwd_params ? l4mtdump(\@fwd_params) : 'NONE' );
 
     # we need to:
     # * save the entry
@@ -41,6 +45,7 @@ sub preview_share {
         my $base_share_dir = $app->config->PreviewShareDirectory
             || File::Spec->catdir( $app->static_file_path, "support",
             "previews" );
+        ###l4p $logger->debug("PreviewShareDirectory: $base_share_dir");
 
         # each entry is getting its own preview directory
         # so we can have multiple files in there
@@ -59,6 +64,7 @@ sub preview_share {
                 "Error creating preview directory ($base_share_dir): "
                     . $fmgr->errstr );
         }
+        ###l4p $logger->debug("Entry PreviewShare directory created at $base_share_dir");
 
         my $ext = $app->blog->file_extension || '';
         $ext = '.' . $ext if $ext ne '';
@@ -69,9 +75,9 @@ sub preview_share {
             or return $app->error(
             "Error writing preview file ($preview_share_file): "
                 . $fmgr->errstr );
+        ###l4p $logger->debug("Entry PreviewShare file created: $preview_share_file");
 
         # build the url for the preview
-
         my $base_share_url = $app->config->PreviewShareUrl
             || $app->static_path . "support/previews/";
         $base_share_url .= '/' unless $base_share_url =~ /\/$/;
@@ -89,23 +95,21 @@ sub preview_share {
 
         # stash it
         $app->request( 'preview_share_url', $base_share_url );
+        ###l4p $logger->debug("Forwarding to Entry PreviewShare URL: $base_share_url");
 
         # forward to the save
         return $app->forward('save_entry');
     }
     else {
-
         # should this be a redirect instead of a POST response
         # on the off chance somebody hits refresh and it gets into
         # a funky state?
-
         # I'm leaning towards yes.  Since I've done just that.
 
         my $entry = shift @fwd_params;
 
         # we've been forwarded here
         # so it's time to build the template to pass to the user
-
         # let's build the index template(s)
 
         require MT::Template;
@@ -164,18 +168,25 @@ sub preview_share {
                 @tmpls;
         }
 
+        ###l4p $logger->debug('We got '.scalar(@tmpls).' @tmpls back' );
+        ###l4p my @tcols = grep { ! m/^(id|name|text|linked_file|modified|created)/ } @{ MT::Template->column_names };
+        ###l4p foreach my $t ( @tmpls ) {
+        ###l4p     $logger->debug( sprintf( 'Template ID %d %s "%s": ', $t->id, $t->identifier, $t->name ),
+        ###l4p                     l4mtdump({ map {  $_ => $t->$_ } @tcols }) );
+        ###l4p }
+
         my $base_dir = $app->request('preview_share_dir');
         my $base_url = $app->request('preview_share_base_url');
         my $url      = $app->request('preview_share_url');
 
         $app->request( 'building_preview_entry', $entry );
+
         my @preview_tmpls = ();
-        push @preview_tmpls,
-            {
+        push @preview_tmpls, {
             template_id   => 'entry',
             template_name => 'Entry',
             template_url  => $url
-            };
+        };
 
         foreach my $tmpl (@tmpls) {
 
