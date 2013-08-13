@@ -218,29 +218,31 @@ sub preview_share {
 
             ###l4p $logger->debug( ++$cnt . ") Now rebuilding $tmpl_desc" );
 
-            unless ( $app->rebuild_indexes(
-                       BlogID   => $entry->blog_id,
-                       Template => $new_tmpl,
-                       FileInfo => $finfo,
-                       Force    => 1,  ) ) {
+            unless (
+                $app->rebuild_indexes(
+                    BlogID   => $entry->blog_id,
+                    Template => $new_tmpl,
+                    FileInfo => $finfo,
+                    # Force    => 1,  
+                )
+            ) {
+                my $msg = "Error publishing " . $tmpl->outfile . ": "
+                        . ($app->errstr||$app->publisher->errstr);
+                # TODO: do more about catching errors here
+                warn $msg;
+                ###l4p $logger->error($msg);
+                $timer && $timer->mark("PreviewShareAborted:$tmpl_desc");
+                next TEMPLATE;
+            }
 
-            my $msg = "Error publishing " . $tmpl->outfile . ": "
-                    . ($app->errstr||$app->publisher->errstr);
-            # TODO: do more about catching errors here
-            warn $msg;
-            ###l4p $logger->error($msg);
-            $timer && $timer->mark("PreviewShareAborted:$tmpl_desc");
-            next TEMPLATE;
-        }
+            $timer && $timer->mark("PreviewShareRebuilt:$tmpl_desc");
+            ###l4p $logger->debug( "Finished rebuilding $tmpl_desc" );
 
-        $timer && $timer->mark("PreviewShareRebuilt:$tmpl_desc");
-        ###l4p $logger->debug( "Finished rebuilding $tmpl_desc" );
-
-        push( @preview_tmpls, {
-            template_id   => $tmpl->id,
-            template_url  => $base_url . $orig_file,
-            template_name => $tmpl->name
-        });
+            push( @preview_tmpls, {
+                template_id   => $tmpl->id,
+                template_url  => $base_url . $orig_file,
+                template_name => $tmpl->name
+            });
         }
 
         $timer && $timer->mark('PreviewShareBuildComplete');
