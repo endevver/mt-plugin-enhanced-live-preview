@@ -8,6 +8,8 @@ use warnings;
 
 use File::Spec;
 
+use MT::Util qw( dirify );
+
 sub preview_share {
     my ( $app, @fwd_params ) = @_;
     ###l4p my $logger = get_logger(); $logger->trace('preview_share');
@@ -469,17 +471,19 @@ sub __hdlr_ca_index_templates {
 
     $out .= '<ul>';
     while ( my $tmpl = $tmpl_iter->() ) {
+        my $id = $field_id . '-' . ($tmpl->identifier ? $tmpl->identifier : dirify( $tmpl->name ) );
+
         $out
-            .= qq!<li><input type="checkbox" name="$field_id" value="!
+            .= qq!<li><input type="checkbox" name="$field_id" id="$id" value="!
             . $tmpl->identifier
             . q!" class="cb"!
             . (
             ( $checked{ $tmpl->id } || $checked{ $tmpl->identifier } )
-            ? ' checked="checked"'
-            : ''
+                ? ' checked="checked"'
+                : ''
             )
-            . '/> '
-            . $tmpl->name . '</li>';
+            . '/> <label for="' . $id . '">'
+            . $tmpl->name . '</label></li>';
     }
 
     $out .= '</ul>';
