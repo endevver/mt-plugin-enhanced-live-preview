@@ -4,7 +4,7 @@ package PreviewShare::CMS;
 use strict;
 use warnings;
 
-use MT::Logger::Log4perl qw( get_logger :resurrect l4mtdump );
+#use MT::Logger::Log4perl qw( get_logger :resurrect l4mtdump );
 
 use File::Spec;
 
