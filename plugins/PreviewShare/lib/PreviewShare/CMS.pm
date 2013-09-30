@@ -12,6 +12,7 @@ use MT::Util qw( dirify );
 
 sub preview_share {
     my ( $app, @fwd_params ) = @_;
+    my $q = $app->can('query') ? $app->query : $app->param;
     ###l4p my $logger = get_logger(); $logger->trace('preview_share');
     ###l4p $logger->debug('fwd_params: ', @fwd_params ? l4mtdump(\@fwd_params) : 'NONE' );
 
@@ -39,7 +40,7 @@ sub preview_share {
         # so grab the preview file
         require MT::Session;
 
-        my $preview = $app->param('_preview_file');
+        my $preview = $q->param('_preview_file');
         my $tf      = MT::Session->load( { id => $preview, kind => 'TF' } );
         my $file    = $tf->name;
 
@@ -228,10 +229,17 @@ sub preview_share {
                     # Force    => 1,  
                 )
             ) {
-                my $msg = "Error publishing " . $tmpl->outfile . ": "
-                        . ($app->errstr||$app->publisher->errstr);
+                my $msg = "Preview Share: Error publishing " . $tmpl->outfile
+                    . ": " . ($app->errstr||$app->publisher->errstr);
                 # TODO: do more about catching errors here
                 warn $msg;
+                $app->log({
+                    blog_id  => $entry->blog_id,
+                    level    => MT->model('log')->ERROR(),
+                    class    => 'preview-share',
+                    category => 'rebuild',
+                    message  => $msg,
+                });
                 ###l4p $logger->error($msg);
                 $timer && $timer->mark("PreviewShareAborted:$tmpl_desc");
                 next TEMPLATE;
@@ -306,13 +314,21 @@ sub preview_share {
 }
 
 sub start_preview_share {
-    my $app = shift;
+    my $app      = shift;
+    my $entry_id = $app->session('preview_entry_id');
+
+    my $entry = MT->model('entry')->load( $entry_id )
+        or return $app->error('The specified entry ID "' . $entry_id
+            . '" could not be loaded.');
 
     my %params;
     # Replace the `http://` that was stripped from the preview_url previously.
-    $params{preview_url}  = 'http://' . $app->session('preview_url');
-    $params{entry_id}     = $app->session('preview_entry_id');
-    $params{redirect}     = $app->session('preview_redirect');
+    $params{preview_url} = 'http://' . $app->session('preview_url');
+    $params{entry_id}    = $entry_id;
+    $params{redirect}    = $app->session('preview_redirect');
+    $params{entry_title} = $entry->title
+        || "Entry ID $entry_id could not be loaded.";
+    $params{blog_id} = $entry->blog_id;
 
     # build the list for the autocomplete
     my $author_complete_options = {};
@@ -329,20 +345,27 @@ sub start_preview_share {
 
 sub source_preview_strip {
     my ( $cb, $app, $tmpl ) = @_;
+    my $q = $app->can('query') ? $app->query : $app->param;
 
     # Preview Share only works on Entries, so hide it from Pages.
-    return if $app->param('_type') eq 'page';
+    return if $q->param('_type') eq 'page';
 
-    my $old = q{name="edit_button_value"$></button>};
+    # Find the "Re-edit this entry" button and append the "Share preview"
+    # button.
+    # Note that the "Re-edit" button is formatted differently in MT4 and MT5.
+    # (The "$" and space before "</button>")
+    my $old = q{name\=\"edit\_button\_value\"\$?\>\s*\<\/button\>};
+
     my $new = qq{<button
                 mt:mode="preview_share"
                 type="submit"
                 name="preview_share"
                 value="preview_share"
                 title="Share Preview"
-                class="primary-button"
+                class="action button primary-button"
                 >Share Preview</button>};
-    $$tmpl =~ s/\Q$old\E/$old$new/gsm;
+
+    $$tmpl =~ s/($old)/$1$new/gsm;
 }
 
 sub post_save_entry {
@@ -361,13 +384,17 @@ sub post_save_entry {
 
 sub do_preview_share {
     my $app = shift;
+    my $q   = $app->can('query') ? $app->query : $app->param;
+    
+    my $blog_id = $q->param('blog_id');
+    my $blog = MT->model('blog')->load( $blog_id );
 
     # get the recipient list
-    my $share_to = $app->param('share_to');
+    my $share_to = $q->param('share_to');
     my @recipients = split( /\s*,\s*/, $share_to );
 
     # and the sharing message
-    my $share_message = $app->param('share_message');
+    my $share_message = $q->param('share_message');
 
     # need some error condition checking here
     # what if they're not sharing with anybody?
@@ -390,7 +417,7 @@ sub do_preview_share {
     # TODO: Make the subject and body more configurable
     my $subject
         = '['
-        . $e->blog->name . '] '
+        . $blog->name . '] '
         . $app->user->name
         . ' shared a preview of "'
         . $e->title . '"';
@@ -402,9 +429,9 @@ EMAIL
 
 RECIPIENT:
     foreach my $recip (@recipients) {
+        # it's a name without an @, so not an email
         unless ( $recip =~ /@/ ) {
 
-            # it's a name without an @, so not an email
             # first try name, then nickname
             my $a;
             if ( $a = MT::Author->load( { name => $recip } ) ) {
@@ -418,9 +445,19 @@ RECIPIENT:
                 $recip = $a->email;
             }
             else {
-
                 # couldn't find an author based on name or nickname
                 # skip it
+                $app->log({
+                    blog_id  => $blog->id,
+                    level    => MT->model('log')->ERROR(),
+                    class    => 'preview-share',
+                    category => 'notification',
+                    message  => 'Preview Share could not send a preview of '
+                        . 'entry #' . $e->id . ' (' . $e->title
+                        . ') with user "' . $recip . '" because they could not '
+                        . 'be found.',
+                });
+
                 next RECIPIENT;
             }
         }
@@ -428,27 +465,23 @@ RECIPIENT:
         my %head = ( To => $recip, Subject => $subject );
 
         # send the preview notification email
-
         require MT::Mail;
         MT::Mail->send( \%head, $body ) or die MT::Mail->errstr;
     }
 
     if ( $app->config->PreviewShareLogPreviews ) {
-        $app->log(
-            {   message => $app->user->name
-                    . ' shared preview of entry #'
-                    . $e->id . ' ('
-                    . $e->title
-                    . ') with '
-                    . $share_to,
-                class => 'preview-share',
-            }
-        );
+        $app->log({
+            blog_id  => $blog->id,
+            level    => MT->model('log')->ERROR(),
+            class    => 'preview-share',
+            category => 'notification',
+            message  => $app->user->name . ' shared preview of entry #' . $e->id
+                . ' (' . $e->title . ") with $share_to.",
+        });
     }
 
-    # the redirect the user to the original page that they *would* have
-    # been sent to
-
+    # Then redirect the user to the original page that they *would* have
+    # been sent to.
     return $app->redirect($redirect);
 }
 

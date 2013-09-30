@@ -23,7 +23,8 @@ options:
   preview_templates:
     scope: blog
     type: index_templates
-    label: 'Index Templates'
+    label: 'Included Index Templates'
+    hint: 'Specify which Index Templates should be included with the Entry preview.'
 
 applications:
   cms:

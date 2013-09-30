@@ -1,9 +1,11 @@
-<mt:setvar name="page_title" value="Share Preview">
-<$mt:setvar name="position_actions_bottom" value="1"$>
+<mt:SetVarBlock name="page_title">Share Preview of <mt:Var name="entry_title"></mt:SetVarBlock>
+<mt:SetVarBlock name="screen_group">entry</mt:SetVarBlock>
+<mt:Var name="position_actions_bottom" value="1">
 
 <mt:setvarblock name="form_header">
 <form name="preview_share_form" id="preview_share_form" method="post" action="<$mt:var name="script_url">" mt:once="1">
     <input type="hidden" name="entry_id" value="<mt:var name="entry_id">" />
+    <input type="hidden" name="blog_id" value="<mt:var name="blog_id">" />
     <input type="hidden" name="return_to" value="<mt:var name="redirect">" />
     <input type="hidden" name="__mode" value="do_preview_share" />
 </mt:setvarblock>
@@ -56,6 +58,8 @@ TC.attachLoadEvent(setupAutoComplete);
 }
 </style>
 
+<p>Share a preview of this entry by emailing to the recipients specified below.</p>
+
 <mtapp:setting
    id="share_url"
    label="Preview URL">
@@ -76,28 +80,30 @@ TC.attachLoadEvent(setupAutoComplete);
    hint="Email addresses to which a sharing notification will be sent.  Multiple addresses should be separated with commas."
    show_hint="1"
    required="1"
-   label="Share Preview With">
+   label="Recipients">
   <div class="textarea_wrapper">
-    <input type="text" class="full-width" name="share_to" id="share_to" />
+    <input type="text" class="full full-width" name="share_to" id="share_to" />
   </div>
   <div id="share_to_completion"></div>
 </mtapp:setting>
 
 <mtapp:setting
    id="share_message"
-   label="Message">
-  <textarea name="share_message" id="share_message" cols="" rows="" class="full-width short"></textarea>
+   label="Message"
+   hint="Include a message with the sharing notification email."
+   show_hint="1">
+  <textarea name="share_message" id="share_message" cols="" rows="" class="text full low full-width short"></textarea>
 </mtapp:setting>
 
 <mt:setvarblock name="action_buttons">
   <button
      type="submit"
      title="Share Preview"
-     class="primary-button">Share Preview</button>
+     class="primary action button primary-button">Share Preview</button>
   <button
      type="cancel"
      title="Return to Entry"
-     class="cancel">Return to Entry</button>
+     class="action button cancel">Return to Entry</button>
 </mt:setvarblock>
 <mt:include name="include/actions_bar.tmpl" bar_position="bottom" hide_pager="1" settings_bar="1">
 
